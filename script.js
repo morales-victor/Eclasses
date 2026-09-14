@@ -46,13 +46,18 @@ function marcarInput(input, correcta) {
   }
 }
 
-function verificarEjercicio(seccion) {
+function verificarEjercicio(seccion, { moverFoco = true } = {}) {
   const inputs = Array.from(seccion.querySelectorAll("input[data-answers]"));
   let correctas = 0;
+  const incorrectos = [];
   inputs.forEach((input) => {
     const ok = esCorrecta(input);
     marcarInput(input, ok);
-    if (ok) correctas += 1;
+    if (ok) {
+      correctas += 1;
+    } else {
+      incorrectos.push(input);
+    }
   });
 
   const nombre = seccion.dataset.exerciseName || "Ejercicio";
@@ -61,9 +66,51 @@ function verificarEjercicio(seccion) {
   if (resultadoEl) resultadoEl.textContent = mensaje;
 
   const regionId = seccion.dataset.liveRegion || "estado-global";
-  anunciar(regionId, mensaje);
+
+  if (moverFoco && incorrectos.length > 0) {
+    incorrectos[0].focus();
+    // Se retrasa el anuncio un poco más que lo normal para que no se
+    // superponga con lo que NVDA anuncia al mover el foco al campo.
+    window.setTimeout(() => {
+      anunciar(regionId, `${mensaje} Se movió el cursor a la primera respuesta por revisar.`);
+    }, 250);
+  } else {
+    anunciar(regionId, mensaje);
+  }
 
   return { correctas, total: inputs.length };
+}
+
+function obtenerInputsConError() {
+  return Array.from(document.querySelectorAll(".exercise input[data-answers]")).filter(
+    (input) => !esCorrecta(input)
+  );
+}
+
+function etiquetaDeInput(input) {
+  const seccion = input.closest(".exercise");
+  const nombreEjercicio = seccion ? seccion.dataset.exerciseName : "";
+  const etiqueta = input.labels && input.labels[0] ? input.labels[0].textContent.trim() : "";
+  return [nombreEjercicio, etiqueta].filter(Boolean).join(" — ");
+}
+
+function irAlSiguienteError() {
+  const errores = obtenerInputsConError();
+
+  if (errores.length === 0) {
+    anunciar("estado-global", "No quedan errores. ¡Bien hecho!");
+    return;
+  }
+
+  const indiceActivo = errores.indexOf(document.activeElement);
+  const siguienteIndice = indiceActivo === -1 ? 0 : (indiceActivo + 1) % errores.length;
+  const siguiente = errores[siguienteIndice];
+
+  siguiente.focus();
+  anunciar(
+    "estado-global",
+    `Error ${siguienteIndice + 1} de ${errores.length}. ${etiquetaDeInput(siguiente)}`
+  );
 }
 
 function calcularResumenGlobal() {
@@ -91,7 +138,9 @@ function calcularResumenGlobal() {
 function mostrarResumenFinal() {
   // Verificar visualmente cada ejercicio también, para que las marcas
   // individuales queden actualizadas antes de mostrar el resumen.
-  document.querySelectorAll(".exercise").forEach(verificarEjercicio);
+  document.querySelectorAll(".exercise").forEach((seccion) =>
+    verificarEjercicio(seccion, { moverFoco: false })
+  );
 
   const { lineas, totalCorrectas, totalPreguntas, porcentaje } = calcularResumenGlobal();
   const tituloUnidad = document.title;
@@ -146,6 +195,11 @@ document.addEventListener("DOMContentLoaded", () => {
       verificarEjercicio(seccion);
     });
   });
+
+  const botonSiguienteError = document.getElementById("boton-siguiente-error");
+  if (botonSiguienteError) {
+    botonSiguienteError.addEventListener("click", irAlSiguienteError);
+  }
 
   const botonResumen = document.getElementById("boton-resumen");
   if (botonResumen) {

@@ -180,6 +180,20 @@ button.secundario {
   font-weight: bold;
 }
 
+.navegacion-errores {
+  margin-top: 2rem;
+  padding: 0.9rem 1rem;
+  border: 1px dashed var(--borde);
+  border-radius: 6px;
+  background: #fafafa;
+}
+
+.ayuda-errores {
+  font-size: 0.9rem;
+  color: #555;
+  margin: 0.5rem 0 0;
+}
+
 #resumen-final {
   margin-top: 2.5rem;
   padding: 1rem;
