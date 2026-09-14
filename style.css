@@ -1,0 +1,202 @@
+/* Estilos base — pensados para uso normal en pantalla, pero sin afectar
+   el orden ni la semántica que lee el lector de pantalla. */
+
+:root {
+  --texto: #1a1a1a;
+  --fondo: #ffffff;
+  --acento: #0b5fa5;
+  --correcto-fondo: #eaf7ea;
+  --correcto-borde: #2e7d32;
+  --incorrecto-fondo: #fdecea;
+  --incorrecto-borde: #c62828;
+  --borde: #cfcfcf;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: var(--texto);
+  background: var(--fondo);
+  line-height: 1.6;
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 4rem;
+}
+
+h1, h2, h3 {
+  line-height: 1.3;
+}
+
+h1 {
+  font-size: 1.6rem;
+  border-bottom: 3px solid var(--acento);
+  padding-bottom: 0.4rem;
+}
+
+h2 {
+  font-size: 1.3rem;
+  margin-top: 2.2rem;
+  color: var(--acento);
+}
+
+h3 {
+  font-size: 1.1rem;
+  margin-top: 1.6rem;
+}
+
+a {
+  color: var(--acento);
+}
+
+a.volver {
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+}
+
+caption {
+  text-align: left;
+  font-weight: bold;
+  margin-bottom: 0.4rem;
+}
+
+th, td {
+  border: 1px solid var(--borde);
+  padding: 0.5rem 0.7rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: #f2f6fa;
+}
+
+.nota {
+  background: #fff8e1;
+  border-left: 4px solid #f9a825;
+  padding: 0.6rem 0.9rem;
+  margin: 1rem 0;
+}
+
+.ejemplo {
+  font-style: italic;
+}
+
+.ejemplo del {
+  color: #8a8a8a;
+}
+
+/* Oculto visualmente, pero disponible para lector de pantalla */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.item {
+  margin: 1rem 0;
+  padding: 0.8rem;
+  border: 1px solid var(--borde);
+  border-radius: 6px;
+}
+
+.item p {
+  margin: 0 0 0.3rem;
+}
+
+input[type="text"] {
+  font: inherit;
+  padding: 0.25rem 0.4rem;
+  border: 1px solid #888;
+  border-radius: 4px;
+  min-width: 8ch;
+}
+
+input[type="text"]:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid var(--acento);
+  outline-offset: 2px;
+}
+
+input.correcto {
+  background: var(--correcto-fondo);
+  border-color: var(--correcto-borde);
+}
+
+input.incorrecto {
+  background: var(--incorrecto-fondo);
+  border-color: var(--incorrecto-borde);
+}
+
+.marca {
+  font-weight: bold;
+  margin-left: 0.4rem;
+}
+
+.marca.correcto-texto {
+  color: var(--correcto-borde);
+}
+
+.marca.incorrecto-texto {
+  color: var(--incorrecto-borde);
+}
+
+button {
+  font: inherit;
+  background: var(--acento);
+  color: white;
+  border: none;
+  padding: 0.55rem 1.1rem;
+  border-radius: 5px;
+  cursor: pointer;
+  margin-top: 0.6rem;
+}
+
+button:hover {
+  filter: brightness(1.1);
+}
+
+button.secundario {
+  background: #555;
+}
+
+.resultado-ejercicio {
+  margin-top: 0.6rem;
+  font-weight: bold;
+}
+
+#resumen-final {
+  margin-top: 2.5rem;
+  padding: 1rem;
+  border: 2px solid var(--acento);
+  border-radius: 8px;
+  background: #f7fbff;
+}
+
+#resumen-final[hidden] {
+  display: none;
+}
+
+#resumen-texto {
+  white-space: pre-wrap;
+  font-family: "Consolas", monospace;
+  background: white;
+  border: 1px solid var(--borde);
+  padding: 0.8rem;
+  border-radius: 4px;
+}
