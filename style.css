@@ -206,7 +206,8 @@ button.secundario {
   display: none;
 }
 
-#resumen-texto {
+#resumen-texto,
+#nota-texto {
   white-space: pre-wrap;
   font-family: "Consolas", monospace;
   background: white;

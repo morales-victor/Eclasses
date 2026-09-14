@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi progreso — Nota 5 (Ebook)</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <a class="volver" href="index.html">← Volver al menú de unidades</a>
+
+  <div id="estado-global" class="sr-only" role="status" aria-live="polite"></div>
+
+  <h1>Mi progreso — Nota 5 (Ebook)</h1>
+
+  <p>
+    Esta página suma las actividades completadas en todas las unidades que
+    hayas trabajado en este mismo navegador, y calcula tu nota estimada con
+    la misma fórmula que se usa para el Ebook (meta: 65 actividades).
+  </p>
+
+  <div class="nota">
+    Importante: este progreso se guarda solo en este navegador y este
+    computador. Si trabajas desde otro equipo, no vas a ver aquí lo hecho
+    en el otro lado.
+  </div>
+
+  <table>
+    <caption>Detalle por actividad</caption>
+    <thead>
+      <tr>
+        <th scope="col">Unidad — Actividad</th>
+        <th scope="col">Estado</th>
+        <th scope="col">Correctas</th>
+      </tr>
+    </thead>
+    <tbody id="tabla-actividades"></tbody>
+  </table>
+
+  <p id="totales"></p>
+
+  <button type="button" id="boton-calcular">Calcular / actualizar nota</button>
+
+  <section id="resultado-nota" hidden aria-labelledby="nota-titulo">
+    <h2 id="nota-titulo">Resultado</h2>
+    <p id="nota-texto"></p>
+    <button type="button" id="boton-copiar-nota" class="secundario">Copiar resultado en texto plano</button>
+    <p id="estado-copia-nota" class="sr-only" role="status" aria-live="polite"></p>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>
