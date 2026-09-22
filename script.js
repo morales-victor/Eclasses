@@ -15,6 +15,7 @@ const META_ACTIVIDADES = 65;
 const QUIEBRE_ACTIVIDADES = 31;
 const PROGRESO_PREFIX = "progreso::";
 const RESPUESTAS_PREFIX = "respuestas::";
+const FEEDBACK_PREFIX = "feedback::";
 
 function notaCompletitud(actividadesHechas) {
   if (actividadesHechas >= META_ACTIVIDADES) return 7;
@@ -36,6 +37,23 @@ function notaFinalEbook(actividadesHechas, actividadesBuenas) {
 
 function normalizar(texto) {
   return texto.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+// Cada actividad puede mezclar dos tipos de campo:
+// - data-answers: se corrige solo (clave de respuestas).
+// - data-freewrite: respuesta personal del estudiante, sin clave —
+//   cuenta para completitud apenas está escrita, y su corrección la
+//   entrega la docente manualmente en progreso.html.
+function inputsAuto(seccion) {
+  return Array.from(seccion.querySelectorAll("input[data-answers]"));
+}
+
+function inputsLibres(seccion) {
+  return Array.from(seccion.querySelectorAll("input[data-freewrite]"));
+}
+
+function inputsActividad(seccion) {
+  return [...inputsAuto(seccion), ...inputsLibres(seccion)];
 }
 
 function esCorrecta(input) {
@@ -74,10 +92,10 @@ function marcarInput(input, correcta) {
 }
 
 function verificarEjercicio(seccion, { moverFoco = true } = {}) {
-  const inputs = Array.from(seccion.querySelectorAll("input[data-answers]"));
+  const auto = inputsAuto(seccion);
   let correctas = 0;
   const incorrectos = [];
-  inputs.forEach((input) => {
+  auto.forEach((input) => {
     const ok = esCorrecta(input);
     marcarInput(input, ok);
     if (ok) {
@@ -87,9 +105,17 @@ function verificarEjercicio(seccion, { moverFoco = true } = {}) {
     }
   });
 
+  const libres = inputsLibres(seccion);
   const nombre = seccion.dataset.exerciseName || "Ejercicio";
   const resultadoEl = seccion.querySelector(".resultado-ejercicio");
-  const mensaje = `${nombre}: ${correctas} de ${inputs.length} respuestas correctas.`;
+  let mensaje;
+  if (auto.length > 0 && libres.length > 0) {
+    mensaje = `${nombre}: ${correctas} de ${auto.length} respuestas correctas. Las respuestas personales las revisa la profesora.`;
+  } else if (auto.length > 0) {
+    mensaje = `${nombre}: ${correctas} de ${auto.length} respuestas correctas.`;
+  } else {
+    mensaje = `${nombre}: actividad de respuesta personal, la corrección la entrega la profesora.`;
+  }
   if (resultadoEl) resultadoEl.textContent = mensaje;
 
   const regionId = seccion.dataset.liveRegion || "estado-global";
@@ -105,7 +131,7 @@ function verificarEjercicio(seccion, { moverFoco = true } = {}) {
     anunciar(regionId, mensaje);
   }
 
-  return { correctas, total: inputs.length };
+  return { correctas, total: auto.length };
 }
 
 // ---- Persistencia en localStorage (por actividad, identificada con
@@ -135,7 +161,7 @@ function guardarRespuestas(seccion) {
   const activityId = seccion.dataset.activityId;
   if (!activityId) return;
   const valores = {};
-  seccion.querySelectorAll("input[data-answers]").forEach((input) => {
+  inputsActividad(seccion).forEach((input) => {
     valores[input.id] = input.value;
   });
   guardarEnStorage(RESPUESTAS_PREFIX + activityId, valores);
@@ -145,7 +171,7 @@ function restaurarRespuestas(seccion) {
   const activityId = seccion.dataset.activityId;
   if (!activityId) return;
   const valores = leerDeStorage(RESPUESTAS_PREFIX + activityId, {});
-  seccion.querySelectorAll("input[data-answers]").forEach((input) => {
+  inputsActividad(seccion).forEach((input) => {
     if (valores[input.id] !== undefined) {
       input.value = valores[input.id];
     }
@@ -155,24 +181,34 @@ function restaurarRespuestas(seccion) {
 function guardarProgresoActividad(seccion) {
   const activityId = seccion.dataset.activityId;
   if (!activityId) return;
-  const inputs = Array.from(seccion.querySelectorAll("input[data-answers]"));
-  const total = inputs.length;
-  const respondidos = inputs.filter((input) => input.value.trim().length > 0).length;
-  const hecha = total > 0 && respondidos === total;
-  const correctas = hecha ? inputs.filter(esCorrecta).length : 0;
+  const auto = inputsAuto(seccion);
+  const libres = inputsLibres(seccion);
+  const todos = [...auto, ...libres];
+  const respondidos = todos.filter((input) => input.value.trim().length > 0).length;
+  const hecha = todos.length > 0 && respondidos === todos.length;
+  const correctasAuto = hecha ? auto.filter(esCorrecta).length : 0;
 
   guardarEnStorage(PROGRESO_PREFIX + activityId, {
     unidad: document.title,
     nombreActividad: seccion.dataset.exerciseName || activityId,
     hecha,
-    total,
-    correctas,
+    totalAuto: auto.length,
+    correctasAuto,
+    totalLibre: libres.length,
   });
 }
 
 function actualizarProgreso(seccion) {
   guardarRespuestas(seccion);
   guardarProgresoActividad(seccion);
+}
+
+function leerFeedbackLibre(activityId) {
+  return leerDeStorage(FEEDBACK_PREFIX + activityId, { correctasLibre: 0 });
+}
+
+function guardarFeedbackLibre(activityId, correctasLibre) {
+  guardarEnStorage(FEEDBACK_PREFIX + activityId, { correctasLibre });
 }
 
 function listarProgresoGlobal() {
@@ -226,21 +262,28 @@ function calcularResumenGlobal() {
   const lineas = [];
   let totalCorrectas = 0;
   let totalPreguntas = 0;
+  let totalLibrePendiente = 0;
 
   secciones.forEach((seccion) => {
-    const inputs = Array.from(seccion.querySelectorAll("input[data-answers]"));
-    const correctas = inputs.filter(esCorrecta).length;
+    const auto = inputsAuto(seccion);
+    const libres = inputsLibres(seccion);
+    const correctas = auto.filter(esCorrecta).length;
     totalCorrectas += correctas;
-    totalPreguntas += inputs.length;
+    totalPreguntas += auto.length;
+    totalLibrePendiente += libres.length;
     const nombre = seccion.dataset.exerciseName || "Ejercicio";
-    lineas.push(`${nombre}: ${correctas}/${inputs.length}`);
+    lineas.push(
+      auto.length > 0
+        ? `${nombre}: ${correctas}/${auto.length}${libres.length > 0 ? " (+ respuesta personal, revisión docente pendiente)" : ""}`
+        : `${nombre}: respuesta personal, revisión docente pendiente`
+    );
   });
 
   const porcentaje = totalPreguntas > 0
     ? Math.round((totalCorrectas / totalPreguntas) * 100)
     : 0;
 
-  return { lineas, totalCorrectas, totalPreguntas, porcentaje };
+  return { lineas, totalCorrectas, totalPreguntas, porcentaje, totalLibrePendiente };
 }
 
 function mostrarResumenFinal() {
@@ -250,13 +293,16 @@ function mostrarResumenFinal() {
     verificarEjercicio(seccion, { moverFoco: false })
   );
 
-  const { lineas, totalCorrectas, totalPreguntas, porcentaje } = calcularResumenGlobal();
+  const { lineas, totalCorrectas, totalPreguntas, porcentaje, totalLibrePendiente } = calcularResumenGlobal();
   const tituloUnidad = document.title;
 
   const texto = [
     `Resumen — ${tituloUnidad}`,
     ...lineas,
-    `Total: ${totalCorrectas}/${totalPreguntas} (${porcentaje}%)`,
+    `Total auto-corregido: ${totalCorrectas}/${totalPreguntas} (${porcentaje}%)`,
+    ...(totalLibrePendiente > 0
+      ? [`Respuestas personales pendientes de revisión docente: ${totalLibrePendiente}`]
+      : []),
   ].join("\n");
 
   const contenedor = document.getElementById("resumen-final");
@@ -307,18 +353,65 @@ function calcularYMostrarProgreso() {
   let sumaBuenas = 0;
 
   actividades.forEach((act) => {
-    const fraccion = act.hecha && act.total > 0 ? act.correctas / act.total : 0;
+    const totalAuto = act.totalAuto || 0;
+    const totalLibre = act.totalLibre || 0;
+    const total = totalAuto + totalLibre;
+    const feedback = totalLibre > 0 ? leerFeedbackLibre(act.id) : { correctasLibre: 0 };
+    const correctasLibre = Math.min(feedback.correctasLibre || 0, totalLibre);
+    const correctas = (act.correctasAuto || 0) + correctasLibre;
+    const fraccion = act.hecha && total > 0 ? correctas / total : 0;
+
     if (act.hecha) {
       hechas += 1;
       sumaBuenas += fraccion;
     }
+
     const fila = document.createElement("tr");
+
     const celdaNombre = document.createElement("td");
     celdaNombre.textContent = `${act.unidad || ""} — ${act.nombreActividad || act.id}`;
+
     const celdaEstado = document.createElement("td");
     celdaEstado.textContent = act.hecha ? "Hecha" : "Pendiente";
+
     const celdaCorrectas = document.createElement("td");
-    celdaCorrectas.textContent = act.hecha ? `${act.correctas}/${act.total}` : "—";
+    if (!act.hecha) {
+      celdaCorrectas.textContent = "—";
+    } else if (totalLibre === 0) {
+      celdaCorrectas.textContent = `${correctas}/${total}`;
+    } else {
+      // Fila con actividad de respuesta personal: se muestra lo
+      // auto-corregido (si hay) y un campo editable para que la
+      // profesora ingrese cuántas de las respuestas personales están
+      // buenas, de un total de totalLibre.
+      const partes = [];
+      if (totalAuto > 0) partes.push(`${act.correctasAuto || 0}/${totalAuto} auto`);
+      partes.push("personal:");
+      celdaCorrectas.append(document.createTextNode(partes.join(" ") + " "));
+
+      const inputFeedback = document.createElement("input");
+      inputFeedback.type = "number";
+      inputFeedback.min = "0";
+      inputFeedback.max = String(totalLibre);
+      inputFeedback.value = String(correctasLibre);
+      inputFeedback.style.width = "4em";
+      inputFeedback.setAttribute(
+        "aria-label",
+        `Cuántas respuestas personales buenas de ${totalLibre}, para ${act.nombreActividad || act.id}`
+      );
+      inputFeedback.addEventListener("change", () => {
+        let valor = parseInt(inputFeedback.value, 10);
+        if (Number.isNaN(valor) || valor < 0) valor = 0;
+        if (valor > totalLibre) valor = totalLibre;
+        inputFeedback.value = String(valor);
+        guardarFeedbackLibre(act.id, valor);
+        calcularYMostrarProgreso();
+      });
+
+      celdaCorrectas.appendChild(inputFeedback);
+      celdaCorrectas.append(document.createTextNode(` de ${totalLibre}`));
+    }
+
     fila.append(celdaNombre, celdaEstado, celdaCorrectas);
     tabla.appendChild(fila);
   });
@@ -372,7 +465,7 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".exercise[data-activity-id]").forEach((seccion) => {
     restaurarRespuestas(seccion);
     actualizarProgreso(seccion);
-    seccion.querySelectorAll("input[data-answers]").forEach((input) => {
+    inputsActividad(seccion).forEach((input) => {
       input.addEventListener("input", () => actualizarProgreso(seccion));
     });
   });
