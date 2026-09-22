@@ -56,9 +56,41 @@ function inputsActividad(seccion) {
   return [...inputsAuto(seccion), ...inputsLibres(seccion)];
 }
 
+// Distancia de edición (Levenshtein): cuántos cambios de una letra hacen
+// falta para convertir un texto en el otro.
+function distanciaEdicion(a, b) {
+  const filas = a.length + 1;
+  const columnas = b.length + 1;
+  const dp = Array.from({ length: filas }, () => new Array(columnas).fill(0));
+  for (let i = 0; i < filas; i += 1) dp[i][0] = i;
+  for (let j = 0; j < columnas; j += 1) dp[0][j] = j;
+  for (let i = 1; i < filas; i += 1) {
+    for (let j = 1; j < columnas; j += 1) {
+      if (a[i - 1] === b[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
+      }
+    }
+  }
+  return dp[filas - 1][columnas - 1];
+}
+
+// Largo mínimo de una respuesta válida para aplicar tolerancia a typos.
+// Por debajo de este largo, un error de una letra suele convertir la
+// palabra en otra distinta y gramaticalmente incorrecta (ej. "is" -> "as"),
+// así que ahí se exige coincidencia exacta.
+const LARGO_MINIMO_TOLERANCIA = 5;
+
 function esCorrecta(input) {
   const respuestasValidas = input.dataset.answers.split("|").map(normalizar);
-  return respuestasValidas.includes(normalizar(input.value));
+  const respuestaAlumno = normalizar(input.value);
+  if (respuestasValidas.includes(respuestaAlumno)) return true;
+  return respuestasValidas.some(
+    (valida) =>
+      valida.length >= LARGO_MINIMO_TOLERANCIA &&
+      distanciaEdicion(valida, respuestaAlumno) <= 1
+  );
 }
 
 function anunciar(regionId, mensaje) {
