@@ -36,7 +36,7 @@ function notaFinalEbook(actividadesHechas, actividadesBuenas) {
 }
 
 function normalizar(texto) {
-  return texto.trim().toLowerCase().replace(/\s+/g, " ");
+  return texto.trim().toLowerCase().replace(/-/g, " ").replace(/\s+/g, " ");
 }
 
 // Cada actividad puede mezclar dos tipos de campo:

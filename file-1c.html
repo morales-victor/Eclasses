@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>File 1C</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <a class="volver" href="index.html">← Volver al menú de unidades</a>
+
+  <div id="estado-global" class="sr-only" role="status" aria-live="polite"></div>
+
+  <h1>File 1C</h1>
+
+  <p>En esta guía practicarás:</p>
+  <ul>
+    <li>A utilizar los adjetivos posesivos.</li>
+  </ul>
+
+  <h2>Ejercicios</h2>
+
+  <!-- ============================= EJERCICIO 1 ============================= -->
+  <section class="exercise" data-exercise-name="Ejercicio 1" data-live-region="estado-global" data-activity-id="file1c-ejercicio1">
+    <h3>Ejercicio 1: Completa las frases con el adjetivo posesivo que corresponda</h3>
+
+    <div class="item">
+      <p>
+        <span lang="en">1) I like</span>
+        <label class="sr-only" for="ex1-1">Item 1, adjetivo posesivo</label>
+        <input lang="en" type="text" id="ex1-1" data-answers="my" size="8" />
+        <span lang="en">job.</span>
+        <span class="marca" aria-hidden="true"></span>
+      </p>
+    </div>
+
+    <div class="item">
+      <p>
+        <span lang="en">2) I know Mister Watson but I don't know</span>
+        <label class="sr-only" for="ex1-2">Item 2, adjetivo posesivo</label>
+        <input lang="en" type="text" id="ex1-2" data-answers="his" size="8" />
+        <span lang="en">wife.</span>
+        <span class="marca" aria-hidden="true"></span>
+      </p>
+    </div>
+
+    <div class="item">
+      <p>
+        <span lang="en">3) Thank you for</span>
+        <label class="sr-only" for="ex1-3">Item 3, adjetivo posesivo</label>
+        <input lang="en" type="text" id="ex1-3" data-answers="your" size="8" />
+        <span lang="en">help.</span>
+        <span class="marca" aria-hidden="true"></span>
+      </p>
+    </div>
+
+    <div class="item">
+      <p>
+        <span lang="en">4) Mary drives</span>
+        <label class="sr-only" for="ex1-4">Item 4, adjetivo posesivo</label>
+        <input lang="en" type="text" id="ex1-4" data-answers="her" size="8" />
+        <span lang="en">car.</span>
+        <span class="marca" aria-hidden="true"></span>
+      </p>
+    </div>
+
+    <div class="item">
+      <p>
+        <span lang="en">5) I have a dog.</span>
+        <label class="sr-only" for="ex1-5">Item 5, adjetivo posesivo</label>
+        <input lang="en" type="text" id="ex1-5" data-answers="its" size="8" />
+        <span lang="en">name is Floppy.</span>
+        <span class="marca" aria-hidden="true"></span>
+      </p>
+    </div>
+
+    <div class="item">
+      <p>
+        <span lang="en">6) They are my friends.</span>
+        <label class="sr-only" for="ex1-6">Item 6, adjetivo posesivo</label>
+        <input lang="en" type="text" id="ex1-6" data-answers="their" size="8" />
+        <span lang="en">lastname is Thomas.</span>
+        <span class="marca" aria-hidden="true"></span>
+      </p>
+    </div>
+
+    <div class="item">
+      <p>
+        <span lang="en">7) We love</span>
+        <label class="sr-only" for="ex1-7">Item 7, adjetivo posesivo</label>
+        <input lang="en" type="text" id="ex1-7" data-answers="our" size="8" />
+        <span lang="en">house.</span>
+        <span class="marca" aria-hidden="true"></span>
+      </p>
+    </div>
+
+    <button type="button" data-action="verificar">Verificar Ejercicio 1</button>
+    <p class="resultado-ejercicio" aria-hidden="true"></p>
+  </section>
+
+  <div class="navegacion-errores">
+    <button type="button" id="boton-siguiente-error" class="secundario">Ir al siguiente error</button>
+    <p class="ayuda-errores">
+      Este botón revisa tus respuestas actuales y mueve el cursor directo a
+      la siguiente que esté incorrecta, sin tener que recorrer todo el
+      formulario para encontrarla.
+    </p>
+  </div>
+
+  <button type="button" id="boton-resumen">Finalizar unidad y ver resumen</button>
+
+  <section id="resumen-final" hidden aria-labelledby="resumen-titulo">
+    <h2 id="resumen-titulo">Resumen de File 1C</h2>
+    <p id="resumen-texto"></p>
+    <button type="button" id="boton-copiar" class="secundario">Copiar resumen en texto plano</button>
+    <p id="estado-copia" class="sr-only" role="status" aria-live="polite"></p>
+  </section>
+
+  <script src="script.js"></script>
+</body>
+</html>
