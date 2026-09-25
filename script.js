@@ -154,10 +154,11 @@ function verificarEjercicio(seccion, { moverFoco = true } = {}) {
 
   if (moverFoco && incorrectos.length > 0) {
     incorrectos[0].focus();
+    const contexto = contextoDeInput(incorrectos[0]);
     // Se retrasa el anuncio un poco más que lo normal para que no se
     // superponga con lo que NVDA anuncia al mover el foco al campo.
     window.setTimeout(() => {
-      anunciar(regionId, `${mensaje} Se movió el cursor a la primera respuesta por revisar.`);
+      anunciar(regionId, `${mensaje} Se movió el cursor a: ${contexto}.`);
     }, 250);
   } else {
     anunciar(regionId, mensaje);
@@ -263,11 +264,40 @@ function obtenerInputsConError() {
   );
 }
 
+function contextoDeInput(input) {
+  const contenedor = input.closest("p");
+  if (!contenedor) return "";
+  let texto = "";
+  contenedor.childNodes.forEach((nodo) => {
+    if (nodo.nodeType === Node.TEXT_NODE) {
+      texto += nodo.textContent;
+    } else if (nodo.nodeType === Node.ELEMENT_NODE) {
+      if (nodo.tagName === "INPUT") {
+        if (nodo === input) {
+          texto += " ___ ";
+        } else if (nodo.value && nodo.value.trim()) {
+          texto += ` ${nodo.value.trim()} `;
+        } else {
+          texto += " ___ ";
+        }
+      } else if (nodo.classList && nodo.classList.contains("sr-only")) {
+        // Se omiten las etiquetas ocultas ("Espacio N"), no aportan
+        // contexto legible de la oración.
+      } else if (nodo.classList && nodo.classList.contains("marca")) {
+        // Se omite la marca visual (✓/✗), es solo decorativa.
+      } else {
+        texto += nodo.textContent;
+      }
+    }
+  });
+  return texto.replace(/\s+/g, " ").trim();
+}
+
 function etiquetaDeInput(input) {
   const seccion = input.closest(".exercise");
   const nombreEjercicio = seccion ? seccion.dataset.exerciseName : "";
-  const etiqueta = input.labels && input.labels[0] ? input.labels[0].textContent.trim() : "";
-  return [nombreEjercicio, etiqueta].filter(Boolean).join(" — ");
+  const contexto = contextoDeInput(input);
+  return [nombreEjercicio, contexto].filter(Boolean).join(" — ");
 }
 
 function irAlSiguienteError() {
@@ -491,6 +521,104 @@ async function copiarNota() {
   anunciar("estado-global", "Resultado copiado al portapapeles.");
 }
 
+// ---- Respaldo y restauración de progreso ----
+// Todo el progreso vive en localStorage, que puede perderse si el equipo
+// tiene algún sistema de restauración al apagarse. Este respaldo exporta
+// TODO lo guardado (respuestas, progreso por actividad, feedback docente)
+// a un archivo .json que se puede guardar fuera del equipo (correo, Drive,
+// pendrive) y volver a cargar si el navegador aparece vacío.
+
+function todasLasClavesDePlataforma() {
+  const claves = [];
+  for (let i = 0; i < localStorage.length; i += 1) {
+    const key = localStorage.key(i);
+    if (
+      key &&
+      (key.indexOf(PROGRESO_PREFIX) === 0 ||
+        key.indexOf(RESPUESTAS_PREFIX) === 0 ||
+        key.indexOf(FEEDBACK_PREFIX) === 0)
+    ) {
+      claves.push(key);
+    }
+  }
+  return claves;
+}
+
+function exportarRespaldo() {
+  const claves = todasLasClavesDePlataforma();
+  const datos = {};
+  claves.forEach((key) => {
+    datos[key] = localStorage.getItem(key);
+  });
+
+  const respaldo = {
+    version: 1,
+    fecha: new Date().toISOString(),
+    datos,
+  };
+
+  const blob = new Blob([JSON.stringify(respaldo, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement("a");
+  const fechaArchivo = new Date().toISOString().slice(0, 10);
+  enlace.href = url;
+  enlace.download = `respaldo-progreso-johao-${fechaArchivo}.json`;
+  document.body.appendChild(enlace);
+  enlace.click();
+  document.body.removeChild(enlace);
+  URL.revokeObjectURL(url);
+
+  const estado = document.getElementById("estado-respaldo");
+  const mensaje = claves.length > 0
+    ? `Respaldo descargado con ${claves.length} registros.`
+    : "No hay ningún progreso guardado todavía para respaldar.";
+  if (estado) estado.textContent = mensaje;
+  anunciar("estado-global", mensaje);
+}
+
+function importarRespaldo(archivo) {
+  const lector = new FileReader();
+  lector.onload = () => {
+    let contenido;
+    try {
+      contenido = JSON.parse(lector.result);
+    } catch (err) {
+      anunciar("estado-global", "No se pudo leer el archivo: no es un respaldo válido.");
+      return;
+    }
+
+    const datos = contenido && contenido.datos ? contenido.datos : null;
+    if (!datos) {
+      anunciar("estado-global", "El archivo no tiene el formato esperado de un respaldo.");
+      return;
+    }
+
+    const claves = Object.keys(datos);
+    const confirmado = window.confirm(
+      `Este archivo tiene ${claves.length} registros guardados el ${contenido.fecha || "(fecha desconocida)"}. ` +
+      "Esto va a reemplazar el progreso actual en este navegador. ¿Continuar?"
+    );
+    if (!confirmado) {
+      anunciar("estado-global", "Restauración cancelada.");
+      return;
+    }
+
+    claves.forEach((key) => {
+      localStorage.setItem(key, datos[key]);
+    });
+
+    calcularYMostrarProgreso();
+    const estado = document.getElementById("estado-respaldo");
+    const mensaje = `Respaldo restaurado: ${claves.length} registros cargados.`;
+    if (estado) estado.textContent = mensaje;
+    anunciar("estado-global", mensaje);
+  };
+  lector.onerror = () => {
+    anunciar("estado-global", "No se pudo leer el archivo seleccionado.");
+  };
+  lector.readAsText(archivo);
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   // Restaurar respuestas guardadas de sesiones anteriores y dejar
   // guardando el progreso automáticamente en cada cambio.
@@ -535,5 +663,20 @@ document.addEventListener("DOMContentLoaded", () => {
   const botonCopiarNota = document.getElementById("boton-copiar-nota");
   if (botonCopiarNota) {
     botonCopiarNota.addEventListener("click", copiarNota);
+  }
+
+  const botonDescargarRespaldo = document.getElementById("boton-descargar-respaldo");
+  if (botonDescargarRespaldo) {
+    botonDescargarRespaldo.addEventListener("click", exportarRespaldo);
+  }
+
+  const inputRespaldo = document.getElementById("input-respaldo");
+  if (inputRespaldo) {
+    inputRespaldo.addEventListener("change", () => {
+      if (inputRespaldo.files && inputRespaldo.files[0]) {
+        importarRespaldo(inputRespaldo.files[0]);
+        inputRespaldo.value = "";
+      }
+    });
   }
 });

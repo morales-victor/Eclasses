@@ -49,6 +49,28 @@
     <p><a class="volver" href="index.html">← Volver al menú de unidades</a></p>
   </section>
 
+  <section id="respaldo" aria-labelledby="respaldo-titulo">
+    <h2 id="respaldo-titulo">Respaldo de progreso</h2>
+    <p>
+      Todo tu progreso se guarda en este computador. Si este equipo borra
+      cosas al apagarse, ese progreso se puede perder. Descarga un respaldo
+      seguido y guárdalo en otro lugar (correo, Google Drive, un pendrive)
+      — nunca solo en este mismo equipo.
+    </p>
+
+    <button type="button" id="boton-descargar-respaldo">Descargar respaldo completo</button>
+
+    <h3>Restaurar un respaldo</h3>
+    <p>
+      Si el progreso de este navegador se perdió, elige el archivo de
+      respaldo que hayas guardado antes para recuperarlo.
+    </p>
+    <label for="input-respaldo">Elegir archivo de respaldo (.json)</label><br />
+    <input type="file" id="input-respaldo" accept="application/json,.json" />
+
+    <p id="estado-respaldo" role="status" aria-live="polite"></p>
+  </section>
+
   <script src="script.js"></script>
 </body>
 </html>
