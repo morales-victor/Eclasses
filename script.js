@@ -526,9 +526,9 @@ async function copiarNota() {
 
 // ---- Ayuda con IA ----
 // El botón "Pedir ayuda a la IA" arma una pregunta con el contexto del
-// ejercicio y la copia al portapapeles. Justo después del botón hay un
-// enlace para abrir Claude en una pestaña nueva, donde el estudiante pega
-// la pregunta. La ayuda es siempre sobre el PRIMER espacio vacío del
+// ejercicio, la pone en el enlace de ChatGPT y la copia al portapapeles.
+// Justo después del botón está el enlace que abre ChatGPT en una pestaña
+// nueva. La ayuda es siempre sobre el PRIMER espacio vacío del
 // ejercicio (o, si todos están llenos, el primero incorrecto): no se usa
 // "el último campo con foco" porque para llegar al botón con Tab se pasa
 // por los demás campos, lo que haría la elección impredecible.
@@ -565,16 +565,16 @@ function pistasDeInput(seccion, input) {
       el = el.previousElementSibling;
     }
     if (el && el.tagName === "H4") subtitulo = textoLimpio(el);
-    pistas.push(...deLaParte);
+    return { generales: pistas, deLaParte, subtitulo };
   }
-  return { pistas, subtitulo };
+  return { generales: pistas, deLaParte: [], subtitulo };
 }
 
-function construirPromptAyuda(seccion) {
-  const titulo = textoLimpio(seccion.querySelector("h3"));
-  const input = inputParaAyuda(seccion);
-  const { pistas, subtitulo } = pistasDeInput(seccion, input);
+// Largo máximo de la pregunta ya codificada para el enlace. ChatGPT tiene un
+// tope práctico cercano a 2.000 caracteres en el parámetro q.
+const LARGO_MAXIMO_PREGUNTA = 1800;
 
+function armarPrompt(titulo, subtitulo, pistas, input) {
   const lineas = [
     "Hola. Estoy practicando inglés básico (nivel A1) con una guía de ejercicios. Uso un lector de pantalla, así que tu respuesta me la va a leer una voz.",
     "",
@@ -602,8 +602,22 @@ function construirPromptAyuda(seccion) {
     }
   }
   lineas.push("Responde en español, con pocas oraciones cortas, sin tablas, sin emojis y sin formato especial.");
+  return lineas.join("\n");
+}
 
-  return { prompt: lineas.join("\n"), input };
+function construirPromptAyuda(seccion) {
+  const titulo = textoLimpio(seccion.querySelector("h3"));
+  const input = inputParaAyuda(seccion);
+  const { generales, deLaParte, subtitulo } = pistasDeInput(seccion, input);
+
+  // De la versión más completa a la más corta; se usa la primera que quepa.
+  const variantes = [[...generales, ...deLaParte], deLaParte, []];
+  let prompt = "";
+  for (const pistas of variantes) {
+    prompt = armarPrompt(titulo, subtitulo, pistas, input);
+    if (encodeURIComponent(prompt).length <= LARGO_MAXIMO_PREGUNTA) break;
+  }
+  return { prompt, input };
 }
 
 async function copiarTexto(texto) {
@@ -625,20 +639,34 @@ async function copiarTexto(texto) {
   }
 }
 
+const URL_IA = "https://chatgpt.com/";
+
 async function pedirAyudaIA(seccion) {
   const { prompt, input } = construirPromptAyuda(seccion);
+
+  // El enlace lleva la pregunta en la dirección: ChatGPT la escribe y la
+  // envía sola. Además se copia al portapapeles como respaldo, por si no.
+  const enlace = seccion.querySelector(".enlace-ia");
+  if (enlace) enlace.href = `${URL_IA}?q=${encodeURIComponent(prompt)}`;
+
   const copiado = await copiarTexto(prompt);
-  if (!copiado) {
-    anunciar("estado-global", "No se pudo copiar la pregunta. Intenta presionar el botón otra vez.");
-    return;
-  }
   const sobre = input
     ? `sobre: ${contextoDeInput(input).replace(/[.!?]+$/, "")}`
     : "sobre la regla del ejercicio";
-  anunciar(
-    "estado-global",
-    `Pregunta copiada, ${sobre}. Presiona Tab para ir al enlace que abre Claude, y ahí pega con Control más V.`
-  );
+  const mensaje = copiado
+    ? `Pregunta lista, ${sobre}. Ahora abre el enlace Abrir ChatGPT. La pregunta debería enviarse sola. Si no aparece, pégala con Control más V y presiona Enter.`
+    : `Pregunta lista, ${sobre}. Ahora abre el enlace Abrir ChatGPT. La pregunta debería enviarse sola. Si no aparece, vuelve aquí y avísale a tu profesor.`;
+
+  // Mensaje visible y anunciado, en la región propia del ejercicio.
+  const estado = seccion.querySelector(".estado-ayuda");
+  if (estado) {
+    estado.textContent = "";
+    window.setTimeout(() => {
+      estado.textContent = mensaje;
+    }, 50);
+  } else {
+    anunciar("estado-global", mensaje);
+  }
 }
 
 // ---- Respaldo y restauración de progreso ----

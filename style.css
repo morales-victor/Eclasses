@@ -235,3 +235,17 @@ h4 {
   margin: 1.4rem 0 0.4rem;
   font-size: 1.05rem;
 }
+
+/* Mensaje visible del botón de ayuda */
+.estado-ayuda {
+  margin-top: 0.6rem;
+  padding: 0.6rem 0.9rem;
+  border-left: 4px solid var(--acento);
+  background: #eef5fc;
+}
+
+.estado-ayuda:empty {
+  padding: 0;
+  margin: 0;
+  border: 0;
+}

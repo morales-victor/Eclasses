@@ -106,8 +106,8 @@ visual), así que cada ejercicio debe bajar la carga cognitiva. Todo
    con un `<p>` por ítem.
 5. Botón "Verificar Ejercicio N" (`data-action="verificar"`).
 6. Botón "Pedir ayuda a la IA" (`data-action="ayuda"`, clase `secundario`).
-7. Enlace `<a class="enlace-ia" href="https://claude.ai/new" target="_blank"
-   rel="noopener">Abrir Claude en una pestaña nueva</a>`.
+7. Enlace `<a class="enlace-ia" href="https://chatgpt.com/" target="_blank"
+   rel="noopener">Abrir ChatGPT en una pestaña nueva</a>`.
 8. `<p class="resultado-ejercicio" aria-hidden="true"></p>`.
 
 Numeración de ítems ("1)", "2)") en español, fuera de lang="en". Los
@@ -126,10 +126,28 @@ espacio (si la respuesta es pronombre + verbo, se marca todo eso).
   si todos están llenos, el primero incorrecto. NO se usa "el último campo
   con foco": para llegar al botón con Tab se pasa por los demás campos y la
   elección sería impredecible. Si no hay ninguno, pide explicar la regla.
-- Copia al portapapeles y anuncia por aria-live sobre qué ítem es la
-  pregunta. No abre la pestaña automáticamente: el enlace va justo después,
-  para que el anuncio no se corte y el comportamiento sea predecible.
-- Johao necesita tener sesión iniciada en claude.ai en su navegador.
+- IA elegida: **ChatGPT** (chatgpt.com), porque permite uso sin iniciar
+  sesión (una conversación por sesión del navegador, sin historial) y
+  acepta la pregunta en el enlace `chatgpt.com/?q=...`, que se escribe y
+  envía sola. Se descartó claude.ai porque exige cuenta. Alternativa sin
+  cuenta evaluada pero no implementada: Duck.ai. La dirección está en la
+  constante `URL_IA` de script.js y en el generador de páginas.
+- Al presionar el botón: pone la pregunta en el enlace, la copia al
+  portapapeles como respaldo, y muestra un mensaje VISIBLE y anunciado en
+  `<p class="estado-ayuda" role="status">` de ese ejercicio. No abre la
+  pestaña automáticamente: el enlace va justo después, para que el anuncio
+  no se corte.
+- Largo máximo de la pregunta codificada: `LARGO_MAXIMO_PREGUNTA = 1800`
+  (ChatGPT tiene un tope práctico cercano a 2.000). Si se pasa, se arma
+  de nuevo sin las pistas generales del ejercicio, y si aún se pasa, sin
+  pistas; la oración del ítem siempre se conserva.
+
+### Caché del navegador
+
+Las páginas cargan `style.css?v=N` y `script.js?v=N`. **Subir N en todas
+las páginas cada vez que cambie script.js o style.css**; si no, el
+navegador puede seguir usando la versión vieja hasta por varios minutos o
+más, y parece que una función nueva "no hace nada".
 
 ## Lógica de corrección (en `script.js`)
 
