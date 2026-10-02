@@ -525,10 +525,9 @@ async function copiarNota() {
 }
 
 // ---- Ayuda con IA ----
-// El botón "Pedir ayuda a la IA" arma una pregunta con el contexto del
-// ejercicio, la pone en el enlace de ChatGPT y la copia al portapapeles.
-// Justo después del botón está el enlace que abre ChatGPT en una pestaña
-// nueva. La ayuda es siempre sobre el PRIMER espacio vacío del
+// El botón "Pedir ayuda a ChatGPT" arma una pregunta con el contexto del
+// ejercicio, la copia al portapapeles como respaldo y abre ChatGPT en una
+// pestaña nueva con la pregunta incluida en la dirección. La ayuda es siempre sobre el PRIMER espacio vacío del
 // ejercicio (o, si todos están llenos, el primero incorrecto): no se usa
 // "el último campo con foco" porque para llegar al botón con Tab se pasa
 // por los demás campos, lo que haría la elección impredecible.
@@ -620,44 +619,54 @@ function construirPromptAyuda(seccion) {
   return { prompt, input };
 }
 
-async function copiarTexto(texto) {
+// Copia instantánea (sin esperas), para que la pestaña nueva se pueda abrir
+// en el mismo instante del clic sin que el navegador la bloquee.
+function copiarTextoAlInstante(texto) {
+  const focoPrevio = document.activeElement;
+  let ok = false;
   try {
-    await navigator.clipboard.writeText(texto);
-    return true;
+    const areaTemporal = document.createElement("textarea");
+    areaTemporal.value = texto;
+    areaTemporal.setAttribute("readonly", "");
+    areaTemporal.style.position = "fixed";
+    areaTemporal.style.opacity = "0";
+    document.body.appendChild(areaTemporal);
+    areaTemporal.select();
+    ok = document.execCommand("copy");
+    document.body.removeChild(areaTemporal);
   } catch (err) {
-    try {
-      const areaTemporal = document.createElement("textarea");
-      areaTemporal.value = texto;
-      document.body.appendChild(areaTemporal);
-      areaTemporal.select();
-      const ok = document.execCommand("copy");
-      document.body.removeChild(areaTemporal);
-      return ok;
-    } catch (err2) {
-      return false;
-    }
+    ok = false;
   }
+  // Devolver el foco al botón, para que al cerrar ChatGPT el estudiante
+  // vuelva exactamente al mismo lugar de la guía.
+  if (focoPrevio && typeof focoPrevio.focus === "function") focoPrevio.focus();
+  return ok;
 }
 
 const URL_IA = "https://chatgpt.com/";
 
-async function pedirAyudaIA(seccion) {
+// Un solo botón: arma la pregunta, la copia como respaldo y abre ChatGPT en
+// una pestaña nueva con la pregunta en la dirección (ChatGPT la envía sola).
+function pedirAyudaIA(seccion) {
   const { prompt, input } = construirPromptAyuda(seccion);
+  const copiado = copiarTextoAlInstante(prompt);
+  const ventana = window.open(`${URL_IA}?q=${encodeURIComponent(prompt)}`, "_blank");
+  if (ventana) ventana.opener = null;
 
-  // El enlace lleva la pregunta en la dirección: ChatGPT la escribe y la
-  // envía sola. Además se copia al portapapeles como respaldo, por si no.
-  const enlace = seccion.querySelector(".enlace-ia");
-  if (enlace) enlace.href = `${URL_IA}?q=${encodeURIComponent(prompt)}`;
-
-  const copiado = await copiarTexto(prompt);
   const sobre = input
     ? `sobre: ${contextoDeInput(input).replace(/[.!?]+$/, "")}`
     : "sobre la regla del ejercicio";
-  const mensaje = copiado
-    ? `Pregunta lista, ${sobre}. Ahora abre el enlace Abrir ChatGPT. La pregunta debería enviarse sola. Si no aparece, pégala con Control más V y presiona Enter.`
-    : `Pregunta lista, ${sobre}. Ahora abre el enlace Abrir ChatGPT. La pregunta debería enviarse sola. Si no aparece, vuelve aquí y avísale a tu profesor.`;
+  let mensaje;
+  if (ventana) {
+    mensaje = `Se abrió ChatGPT en una pestaña nueva con tu pregunta, ${sobre}. Para volver aquí, cierra esa pestaña con Control más W.`;
+  } else if (copiado) {
+    mensaje = "El navegador no dejó abrir la pestaña. La pregunta quedó copiada: abre chatgpt.com, pégala con Control más V y presiona Enter.";
+  } else {
+    mensaje = "El navegador no dejó abrir la pestaña ni copiar la pregunta. Avísale a tu profesor.";
+  }
 
-  // Mensaje visible y anunciado, en la región propia del ejercicio.
+  // El mensaje queda escrito junto al botón: si se abrió ChatGPT, Johao lo
+  // encuentra al volver; si falló, lo escucha de inmediato.
   const estado = seccion.querySelector(".estado-ayuda");
   if (estado) {
     estado.textContent = "";

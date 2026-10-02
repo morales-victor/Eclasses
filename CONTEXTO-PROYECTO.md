@@ -105,9 +105,10 @@ visual), así que cada ejercicio debe bajar la carga cognitiva. Todo
    `.nota` si aplica, **su propio ejemplo resuelto**, y un `<div class="item">`
    con un `<p>` por ítem.
 5. Botón "Verificar Ejercicio N" (`data-action="verificar"`).
-6. Botón "Pedir ayuda a la IA" (`data-action="ayuda"`, clase `secundario`).
-7. Enlace `<a class="enlace-ia" href="https://chatgpt.com/" target="_blank"
-   rel="noopener">Abrir ChatGPT en una pestaña nueva</a>`.
+6. Botón "Pedir ayuda a ChatGPT, se abre en una pestaña nueva"
+   (`data-action="ayuda"`, clase `secundario`). Es un solo botón: no hay
+   enlace aparte.
+7. `<p class="estado-ayuda" role="status" aria-live="polite"></p>`.
 8. `<p class="resultado-ejercicio" aria-hidden="true"></p>`.
 
 Numeración de ítems ("1)", "2)") en español, fuera de lang="en". Los
@@ -132,11 +133,14 @@ espacio (si la respuesta es pronombre + verbo, se marca todo eso).
   envía sola. Se descartó claude.ai porque exige cuenta. Alternativa sin
   cuenta evaluada pero no implementada: Duck.ai. La dirección está en la
   constante `URL_IA` de script.js y en el generador de páginas.
-- Al presionar el botón: pone la pregunta en el enlace, la copia al
-  portapapeles como respaldo, y muestra un mensaje VISIBLE y anunciado en
-  `<p class="estado-ayuda" role="status">` de ese ejercicio. No abre la
-  pestaña automáticamente: el enlace va justo después, para que el anuncio
-  no se corte.
+- Al presionar el botón, en el mismo instante del clic (para que el
+  navegador no bloquee la pestaña): copia la pregunta al portapapeles con
+  una copia instantánea, devuelve el foco al botón, y abre
+  `chatgpt.com/?q=...` con `window.open`. Deja un mensaje visible en
+  `.estado-ayuda`: si se abrió, dice sobre qué ítem fue la pregunta y cómo
+  volver (Control más W); si el navegador la bloqueó, indica pegar la
+  pregunta copiada en chatgpt.com. Al cerrar la pestaña de ChatGPT, el
+  estudiante vuelve al mismo botón.
 - Largo máximo de la pregunta codificada: `LARGO_MAXIMO_PREGUNTA = 1800`
   (ChatGPT tiene un tope práctico cercano a 2.000). Si se pasa, se arma
   de nuevo sin las pistas generales del ejercicio, y si aún se pasa, sin
