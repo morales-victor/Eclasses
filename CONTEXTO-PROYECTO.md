@@ -75,6 +75,61 @@ de la hoja de ruta oficial del curso.
    si alguna vez se usa como respuesta esperada (ver File 2A, ítems de
    "a/an" sin artículo), el guion largo no coincide con lo que el teclado
    produce.
+9. **Nada de rayas (—), flechas (←, →) ni barras (/) en texto que el
+   estudiante escucha** (contenido, anuncios aria-live, resumen, tabla de
+   progreso). NVDA puede leerlos en voz alta como símbolos. Usar dos puntos,
+   comas o punto seguido. Única excepción deliberada: la barra en File 1B
+   Ejercicio 1, que marca dónde falta el verbo y se explica en el Recuerda.
+10. **En ejercicios de números, el número en cifras va FUERA de lang="en"**
+    (ej. `<p>2: <input></p>`). Si va dentro de un span en inglés, NVDA lo
+    lee "two" y le dicta la respuesta al estudiante.
+11. **Palabras para ordenar se separan con comas**, no con guiones ni barras
+    (la coma produce una pausa natural sin leer ningún símbolo).
+12. **Un campo vacío nunca es correcto** (`esCorrecta` lo verifica primero).
+    Importante porque respuestas como "-" quedan vacías al normalizarse.
+
+## Estructura obligatoria de cada ejercicio (modelamiento y scaffolding)
+
+Decisión pedagógica de la jefatura: Johao hace tres tareas a la vez
+(escuchar NVDA, recordar la estructura gramatical y teclear sin referencia
+visual), así que cada ejercicio debe bajar la carga cognitiva. Todo
+`<section class="exercise">` sigue este orden:
+
+1. `<h3>` con el título del ejercicio.
+2. Cuadro `.nota` "Recuerda:" con la regla o lista mínima necesaria.
+3. Opcional: `<p>` de instrucción y `<p class="ejemplo">Ejemplo resuelto: ...`.
+4. Los ítems **agrupados en partes según un criterio que reduzca el cambio
+   de "modo mental"** (ej. afirmativas primero y negativas después; preguntas
+   con to be, luego con do, luego con does; mañana y luego noche). Cada parte:
+   `<h4>Parte N: ...</h4>` (navegable con la tecla 4 de NVDA), su propia
+   `.nota` si aplica, **su propio ejemplo resuelto**, y un `<div class="item">`
+   con un `<p>` por ítem.
+5. Botón "Verificar Ejercicio N" (`data-action="verificar"`).
+6. Botón "Pedir ayuda a la IA" (`data-action="ayuda"`, clase `secundario`).
+7. Enlace `<a class="enlace-ia" href="https://claude.ai/new" target="_blank"
+   rel="noopener">Abrir Claude en una pestaña nueva</a>`.
+8. `<p class="resultado-ejercicio" aria-hidden="true"></p>`.
+
+Numeración de ítems ("1)", "2)") en español, fuera de lang="en". Los
+ejemplos resueltos usan `<strong>` para marcar exactamente lo que va en el
+espacio (si la respuesta es pronombre + verbo, se marca todo eso).
+
+### Botón de ayuda con IA (en `script.js`)
+
+- Arma un prompt en español con: título del ejercicio, subtítulo de la
+  parte, las notas/ejemplos que aplican a esa parte, y la oración con el
+  espacio marcado como `[AQUÍ]` (otros espacios de la misma línea quedan
+  como `___`). Pide explicar sin dar la respuesta, en oraciones cortas, sin
+  tablas ni emojis (porque lo lee una voz). Para `data-freewrite` pide ideas
+  sin escribir por el estudiante. No incluye el nombre ni datos personales.
+- El espacio elegido es **siempre el primer campo vacío del ejercicio**, o
+  si todos están llenos, el primero incorrecto. NO se usa "el último campo
+  con foco": para llegar al botón con Tab se pasa por los demás campos y la
+  elección sería impredecible. Si no hay ninguno, pide explicar la regla.
+- Copia al portapapeles y anuncia por aria-live sobre qué ítem es la
+  pregunta. No abre la pestaña automáticamente: el enlace va justo después,
+  para que el anuncio no se corte y el comportamiento sea predecible.
+- Johao necesita tener sesión iniciada en claude.ai en su navegador.
 
 ## Lógica de corrección (en `script.js`)
 
@@ -134,16 +189,15 @@ de la hoja de ruta oficial del curso.
   simplifican a **solo armar la pregunta** (se quita la parte de responder
   sobre uno mismo) — se determinó que pedir ambas cosas a la vez era
   demasiada carga cognitiva.
-- No se agrega ningún resumen teórico largo al principio de cada unidad —
-  en su lugar, un cuadro corto "Recuerda:" (clase CSS `.nota`) justo antes
-  de cada ejercicio, con solo la lista/patrón mínimo necesario (no
-  explicación extensa). Decisión explícita de la docente: los estudiantes
-  videntes tienen el libro/pizarra a mano mientras hacen el Ebook: esto
-  reemplaza esa referencia visual rápida, sin ser una clase completa.
+- No se agrega ningún resumen teórico largo al principio de cada unidad.
+  En su lugar, cuadros cortos "Recuerda:" y ejemplos resueltos dentro de
+  cada ejercicio y de cada parte (ver "Estructura obligatoria de cada
+  ejercicio"). Los estudiantes videntes tienen el libro o la pizarra a mano
+  mientras hacen el Ebook; esto reemplaza esa referencia rápida.
 
 ## Estado actual de construcción
 
-**Completos:** File 1A, 1B, 1C, 2A, 2B, 3A, 3B, 3C.
+**Completos (ya con la estructura de modelamiento y agrupación):** File 1A, 1B, 1C, 2A, 2B, 3A, 3B, 3C.
 
 **Pendientes según hoja de ruta (tienen KC):** File 4B, 4C, 5A, 5B, 5C, 6B.
 

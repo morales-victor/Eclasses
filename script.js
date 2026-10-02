@@ -83,6 +83,9 @@ function distanciaEdicion(a, b) {
 const LARGO_MINIMO_TOLERANCIA = 5;
 
 function esCorrecta(input) {
+  // Un campo vacío nunca es correcto (importante en respuestas como "-",
+  // que al normalizarse también quedan vacías).
+  if (!input.value.trim()) return false;
   const respuestasValidas = input.dataset.answers.split("|").map(normalizar);
   const respuestaAlumno = normalizar(input.value);
   if (respuestasValidas.includes(respuestaAlumno)) return true;
@@ -158,7 +161,7 @@ function verificarEjercicio(seccion, { moverFoco = true } = {}) {
     // Se retrasa el anuncio un poco más que lo normal para que no se
     // superponga con lo que NVDA anuncia al mover el foco al campo.
     window.setTimeout(() => {
-      anunciar(regionId, `${mensaje} Se movió el cursor a: ${contexto}.`);
+      anunciar(regionId, `${mensaje} Se movió el cursor a: ${contexto.replace(/[.!?]+$/, "")}.`);
     }, 250);
   } else {
     anunciar(regionId, mensaje);
@@ -264,7 +267,7 @@ function obtenerInputsConError() {
   );
 }
 
-function contextoDeInput(input) {
+function contextoDeInput(input, marcaObjetivo = "___") {
   const contenedor = input.closest("p");
   if (!contenedor) return "";
   let texto = "";
@@ -274,7 +277,7 @@ function contextoDeInput(input) {
     } else if (nodo.nodeType === Node.ELEMENT_NODE) {
       if (nodo.tagName === "INPUT") {
         if (nodo === input) {
-          texto += " ___ ";
+          texto += ` ${marcaObjetivo} `;
         } else if (nodo.value && nodo.value.trim()) {
           texto += ` ${nodo.value.trim()} `;
         } else {
@@ -297,7 +300,7 @@ function etiquetaDeInput(input) {
   const seccion = input.closest(".exercise");
   const nombreEjercicio = seccion ? seccion.dataset.exerciseName : "";
   const contexto = contextoDeInput(input);
-  return [nombreEjercicio, contexto].filter(Boolean).join(" — ");
+  return [nombreEjercicio, contexto].filter(Boolean).join(". ");
 }
 
 function irAlSiguienteError() {
@@ -359,7 +362,7 @@ function mostrarResumenFinal() {
   const tituloUnidad = document.title;
 
   const texto = [
-    `Resumen — ${tituloUnidad}`,
+    `Resumen de ${tituloUnidad}`,
     ...lineas,
     `Total auto-corregido: ${totalCorrectas}/${totalPreguntas} (${porcentaje}%)`,
     ...(totalLibrePendiente > 0
@@ -431,14 +434,14 @@ function calcularYMostrarProgreso() {
     const fila = document.createElement("tr");
 
     const celdaNombre = document.createElement("td");
-    celdaNombre.textContent = `${act.unidad || ""} — ${act.nombreActividad || act.id}`;
+    celdaNombre.textContent = `${act.unidad || ""}, ${act.nombreActividad || act.id}`;
 
     const celdaEstado = document.createElement("td");
     celdaEstado.textContent = act.hecha ? "Hecha" : "Pendiente";
 
     const celdaCorrectas = document.createElement("td");
     if (!act.hecha) {
-      celdaCorrectas.textContent = "—";
+      celdaCorrectas.textContent = "Sin datos";
     } else if (totalLibre === 0) {
       celdaCorrectas.textContent = `${correctas}/${total}`;
     } else {
@@ -519,6 +522,123 @@ async function copiarNota() {
   }
   if (estado) estado.textContent = "Resultado copiado al portapapeles.";
   anunciar("estado-global", "Resultado copiado al portapapeles.");
+}
+
+// ---- Ayuda con IA ----
+// El botón "Pedir ayuda a la IA" arma una pregunta con el contexto del
+// ejercicio y la copia al portapapeles. Justo después del botón hay un
+// enlace para abrir Claude en una pestaña nueva, donde el estudiante pega
+// la pregunta. La ayuda es siempre sobre el PRIMER espacio vacío del
+// ejercicio (o, si todos están llenos, el primero incorrecto): no se usa
+// "el último campo con foco" porque para llegar al botón con Tab se pasa
+// por los demás campos, lo que haría la elección impredecible.
+
+function textoLimpio(elemento) {
+  return elemento ? elemento.textContent.replace(/\s+/g, " ").trim() : "";
+}
+
+function inputParaAyuda(seccion) {
+  const vacio = inputsActividad(seccion).find((input) => !input.value.trim());
+  if (vacio) return vacio;
+  return inputsAuto(seccion).find((input) => !esCorrecta(input)) || null;
+}
+
+// Pistas que aplican a un campo: las notas/ejemplos generales del
+// ejercicio (antes del primer h4) y las de la parte (h4) donde está.
+function esPista(el) {
+  return el.classList.contains("nota") || el.tagName === "P";
+}
+
+function pistasDeInput(seccion, input) {
+  const pistas = [];
+  for (const hijo of Array.from(seccion.children)) {
+    if (hijo.tagName === "H4" || hijo.classList.contains("item")) break;
+    if (esPista(hijo)) pistas.push(textoLimpio(hijo));
+  }
+  let subtitulo = "";
+  if (input) {
+    const deLaParte = [];
+    let el = input.closest(".item");
+    el = el ? el.previousElementSibling : null;
+    while (el && el.tagName !== "H4" && el.tagName !== "H3") {
+      if (esPista(el) && !pistas.includes(textoLimpio(el))) deLaParte.unshift(textoLimpio(el));
+      el = el.previousElementSibling;
+    }
+    if (el && el.tagName === "H4") subtitulo = textoLimpio(el);
+    pistas.push(...deLaParte);
+  }
+  return { pistas, subtitulo };
+}
+
+function construirPromptAyuda(seccion) {
+  const titulo = textoLimpio(seccion.querySelector("h3"));
+  const input = inputParaAyuda(seccion);
+  const { pistas, subtitulo } = pistasDeInput(seccion, input);
+
+  const lineas = [
+    "Hola. Estoy practicando inglés básico (nivel A1) con una guía de ejercicios. Uso un lector de pantalla, así que tu respuesta me la va a leer una voz.",
+    "",
+    `Estoy en el ${titulo}${subtitulo ? `. ${subtitulo}` : ""}.`,
+  ];
+  if (pistas.length) lineas.push(`Lo que dice la guía: ${pistas.join(" ")}`);
+  lineas.push("");
+
+  if (!input) {
+    lineas.push(
+      "Ya completé este ejercicio y quiero entender mejor la regla. Explícamela con palabras simples y dame un par de ejemplos."
+    );
+  } else {
+    const contexto = contextoDeInput(input, "[AQUÍ]");
+    lineas.push(`La parte donde necesito ayuda es: "${contexto}". El espacio que debo completar está marcado como [AQUÍ].`);
+    if (input.value.trim()) lineas.push(`Yo escribí: "${input.value.trim()}".`);
+    if (input.dataset.freewrite) {
+      lineas.push(
+        "Es una respuesta personal, así que no hay una sola respuesta correcta. Ayúdame con ideas o dime si lo que escribí está bien escrito, pero no lo escribas por mí."
+      );
+    } else {
+      lineas.push(
+        "Por favor, no me des la respuesta directamente. Explícame con palabras simples en qué me tengo que fijar, dame un ejemplo parecido con otras palabras, y después pregúntame cuál creo que es la respuesta."
+      );
+    }
+  }
+  lineas.push("Responde en español, con pocas oraciones cortas, sin tablas, sin emojis y sin formato especial.");
+
+  return { prompt: lineas.join("\n"), input };
+}
+
+async function copiarTexto(texto) {
+  try {
+    await navigator.clipboard.writeText(texto);
+    return true;
+  } catch (err) {
+    try {
+      const areaTemporal = document.createElement("textarea");
+      areaTemporal.value = texto;
+      document.body.appendChild(areaTemporal);
+      areaTemporal.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(areaTemporal);
+      return ok;
+    } catch (err2) {
+      return false;
+    }
+  }
+}
+
+async function pedirAyudaIA(seccion) {
+  const { prompt, input } = construirPromptAyuda(seccion);
+  const copiado = await copiarTexto(prompt);
+  if (!copiado) {
+    anunciar("estado-global", "No se pudo copiar la pregunta. Intenta presionar el botón otra vez.");
+    return;
+  }
+  const sobre = input
+    ? `sobre: ${contextoDeInput(input).replace(/[.!?]+$/, "")}`
+    : "sobre la regla del ejercicio";
+  anunciar(
+    "estado-global",
+    `Pregunta copiada, ${sobre}. Presiona Tab para ir al enlace que abre Claude, y ahí pega con Control más V.`
+  );
 }
 
 // ---- Respaldo y restauración de progreso ----
@@ -635,6 +755,12 @@ document.addEventListener("DOMContentLoaded", () => {
       const seccion = boton.closest(".exercise");
       verificarEjercicio(seccion);
       actualizarProgreso(seccion);
+    });
+  });
+
+  document.querySelectorAll('[data-action="ayuda"]').forEach((boton) => {
+    boton.addEventListener("click", () => {
+      pedirAyudaIA(boton.closest(".exercise"));
     });
   });
 
