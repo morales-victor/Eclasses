@@ -156,12 +156,36 @@ más, y parece que una función nueva "no hace nada".
 ## Lógica de corrección (en `script.js`)
 
 - `normalizar()`: minúsculas, sin espacios extra, guiones tratados igual
-  que espacios ("twenty-one" = "twenty one"), signo de interrogación
-  ignorado.
+  que espacios ("twenty-one" = "twenty one"), y se ignoran los signos
+  `. , ! ? ¿ ¡` (el estudiante puede terminar con punto o no). Si una
+  respuesta queda vacía al normalizar, solo vale el guion literal "-".
 - `esCorrecta()`: coincidencia exacta tras normalizar, **o** tolerancia a
   **un** error de tipeo (distancia de edición ≤ 1) — pero solo en
   respuestas de **5 o más letras**, para no arriesgar que una palabra corta
   distinta (ej. "is" vs "as") pase como buena.
+- Ejercicios de **escribir la oración completa** (ordenar palabras, armar
+  la pregunta) llevan `data-ignorar-espacios="true"` en el `<section>`:
+  ahí se acepta la respuesta aunque falten o estén corridos los espacios
+  ("Areyoutired?" = "Are you tired?"), porque se evalúa el orden. Motivo:
+  el respaldo de Johao mostró 4 de 10 respuestas de 3C con el orden bien y
+  solo los espacios corridos al tipear. Hoy: 1B Ej. 1, 3C Ej. 1, 4C Ej. 2.
+  En el generador, `"ignorar_espacios": True` en el ejercicio.
+- Ejercicios donde se evalúa la **forma** de la palabra (terminación `ing`,
+  la `s` de he/she, `am/is/are`, `likes + ing`) llevan
+  `data-sin-tolerancia="true"`: ahí NO se acepta el error de una letra,
+  porque "makeing", "runing" o "love" (por "loves") son justo el error que
+  el ejercicio debe mostrar. En el generador, `"sin_tolerancia": True`. Hoy:
+  5B Ej. 2 y 3, 5C Ej. 2, 6B Ej. 1 y 2. En esos ejercicios, las negaciones
+  se aceptan también sin apóstrofo ("doesnt", "isnt") agregándolas como
+  respuesta válida, no con una regla global: en 1C "its" e "it's" son
+  respuestas distintas.
+- El apóstrofo curvo (’) se normaliza a recto (') en `normalizar()`.
+- Pendiente de decidir con el profesor: 3A Ej. 1 (la `s` de tercera
+  persona) tiene la misma debilidad ("play" pasa por "plays"), pero Johao
+  ya lo respondió; no se cambió para no alterar su corrección sin acuerdo.
+- La restauración de respaldo **combina**: reemplaza solo las claves que
+  vienen en el archivo y deja las demás. Sirve para juntar avance hecho en
+  dos equipos distintos.
 - Cada `<input>` de respuesta cerrada lleva `data-answers="opcion1|opcion2"`
   (varias opciones separadas por `|`).
 - Actividades de **respuesta personal / escritura libre** (sin una
@@ -184,9 +208,25 @@ más, y parece que una función nueva "no hace nada".
 - Fórmulas en `script.js`: `notaCompletitud()`, `notaCorreccion()`,
   `notaFinalEbook()`. No modificar sin volver a validar contra la fórmula
   oficial del Programa de Inglés (Excel que maneja Nancy/el Programa).
-- Una "actividad" = un `<section class="exercise">` completo (no cada
-  blank individual). Se cuenta "hecha" cuando *todos* sus campos (incluidos
-  los de escritura libre) tienen algo escrito.
+- Una "actividad" = una **parte** de un ejercicio: cada `<h4>` dentro de
+  un `<section class="exercise">` es una actividad, y un ejercicio sin `<h4>`
+  cuenta como una sola. Una parte está "hecha" cuando *todos* sus campos
+  (incluidos los de escritura libre) tienen algo escrito; su corrección se
+  prorratea por espacio. Decidido por el profesor para llegar a la meta de
+  65 sin tocar el avance ya guardado.
+- **Regla crítica:** contar por partes es solo cálculo. Los
+  `data-activity-id` (uno por ejercicio) y los `id` de cada input NO se
+  cambian nunca en Files ya publicados: son las claves de `localStorage`
+  donde está guardado el avance de Johao. Agregar, quitar o reordenar `<h4>`
+  sí cambia el conteo, así que tampoco se hace en Files que Johao ya trabajó.
+- Cómo se cuenta (`script.js`): `partesDeSeccion()` agrupa los campos por
+  `<h4>`; `resumenPartes()` calcula hecha/correctas por parte; el registro
+  `progreso::<id>` guarda además un arreglo `partes`. Para registros
+  antiguos sin `partes`, `progreso.html` lee la página de la unidad con
+  `fetch` y corrige las respuestas guardadas; si no puede, cuenta el
+  ejercicio como una sola actividad. Las respuestas personales buenas que
+  ingresa la docente (por ejercicio) se reparten entre sus partes en
+  proporción a sus espacios personales.
 - Progreso guardado en `localStorage` del navegador — **riesgo conocido**:
   el notebook que Duoc le entregará a Johao puede tener un "soft reset" al
   apagarse que borre el perfil del navegador. Pendiente confirmar con TI de
@@ -219,20 +259,24 @@ más, y parece que una función nueva "no hace nada".
 
 ## Estado actual de construcción
 
-**Completos (ya con la estructura de modelamiento y agrupación):** File 1A, 1B, 1C, 2A, 2B, 3A, 3B, 3C.
-
-**Pendientes según hoja de ruta (tienen KC):** File 4B, 4C, 5A, 5B, 5C, 6B.
+**Completos (ya con la estructura de modelamiento y agrupación):** File 1A, 1B, 1C, 2A, 2B, 3A, 3B, 3C, 4B, 4C, 5A, 5B, 5C, 6B. Con esto están todos los Files que tienen KC.
 
 **Excluidos (100% SC, no construir):** File 2C, 4A, 6A, 6C.
 
-**Decisiones pendientes de resolver antes de construir esos Files:**
-- **File 5A**: el KC real es solo "Verb phrases"; "Can/can't" es SC pero es
-  el único vehículo del eclass original para enseñar esas verb phrases. Se
-  decidió construir un ejercicio de vocabulario de habilidades que NO pase
-  por la estructura can/can't (en vez de usar el eclass tal cual).
-- **File 5C**: el KC pide "weather and seasons" pero el eclass original no
-  tiene absolutamente nada de ese contenido — hay que conseguir o crear
-  ese material desde cero, no existe fuente qué adaptar.
+**Cantidad de actividades:** contando por partes, los 14 Files suman 78
+actividades (meta 65).
+
+**KC de File 5 y 6 según la hoja de ruta (LE2):**
+- 5A: Verb phrases (KC). Can/can't y sentence stress son SC: el File no usa
+  can/can't como estructura; practica las verb phrases en presente simple.
+- 5B: Present continuous y verb phrases (KC). El sonido ŋ es SC.
+- 5C: Present simple o present continuous, y the weather and seasons (KC).
+  Places es SC. El eclass no trae clima ni estaciones: ese ejercicio es
+  propio, con vocabulario básico (spring, summer, fall/autumn, winter; hot,
+  cold, sunny, cloudy, windy, raining, snowing).
+- 6B: Like + verb + ing (KC). The date y ordinal numbers son SC.
+- Calendario: semana 15 es el último plazo para completar las actividades
+  del Ebook (nota de progreso).
 
 ## Convención de nombres
 
@@ -252,3 +296,11 @@ correr los chequeos automáticos ya establecidos (ver cualquier commit
 anterior): balance de etiquetas HTML, mayúsculas sostenidas sospechosas,
 abreviaciones con punto, español dentro de `lang="en"`, inputs de respuesta
 sin `lang="en"`, y ausencia de notas de implementación visibles.
+
+## Generador de páginas
+
+Las páginas `file-XX.html` desde File 4B se generan con un script Python
+(`build.py` + `contenido.py`), guardado aparte del sitio. Para un File
+nuevo: agregar su contenido en `contenido.py` y correr
+`python3 build.py <carpeta_del_sitio>`. El contenido de File 1A a 3C no está
+en el `contenido.py` actual: esas páginas se editan directamente.

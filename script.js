@@ -35,8 +35,18 @@ function notaFinalEbook(actividadesHechas, actividadesBuenas) {
   return Math.round(((notaCompletitud(actividadesHechas) + notaCorreccion(actividadesBuenas)) / 2) * 10) / 10;
 }
 
+// Se ignoran mayúsculas, signos de puntuación (. , ! ? ¿ ¡) y espacios
+// extra; el guion cuenta como espacio ("twenty-one" = "twenty one") y el
+// apóstrofo curvo cuenta como recto ("don’t" = "don't").
 function normalizar(texto) {
-  return texto.trim().toLowerCase().replace(/\?/g, "").replace(/-/g, " ").replace(/\s+/g, " ").trim();
+  return texto
+    .trim()
+    .toLowerCase()
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[.,!?¿¡]/g, "")
+    .replace(/-/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 // Cada actividad puede mezclar dos tipos de campo:
@@ -82,13 +92,43 @@ function distanciaEdicion(a, b) {
 // así que ahí se exige coincidencia exacta.
 const LARGO_MINIMO_TOLERANCIA = 5;
 
+// En los ejercicios de escribir la oración completa (sección con
+// data-ignorar-espacios), lo que se evalúa es el orden de las palabras: un
+// espacio faltante o corrido al tipear ("Areyoutired?") no cuenta como error.
+function ignoraEspacios(input) {
+  return Boolean(input.closest && input.closest("[data-ignorar-espacios]"));
+}
+
+// En los ejercicios donde se evalúa la forma de la palabra (terminación ing,
+// la s de he/she, am/is/are), la sección lleva data-sin-tolerancia: ahí no
+// se acepta el error de una letra, porque "makeing" o "love" (por "loves")
+// son justo el error que el ejercicio debe mostrar.
+function sinTolerancia(input) {
+  return Boolean(input.closest && input.closest("[data-sin-tolerancia]"));
+}
+
 function esCorrecta(input) {
+  return esCorrectaValor(input.value, input.dataset.answers, ignoraEspacios(input), sinTolerancia(input));
+}
+
+// Misma corrección, pero a partir de un valor y una clave sueltos. La usa
+// progreso.html para corregir respuestas guardadas sin tener la unidad abierta.
+function esCorrectaValor(valor, clave, sinEspacios = false, exacta = false) {
+  valor = valor || "";
   // Un campo vacío nunca es correcto (importante en respuestas como "-",
   // que al normalizarse también quedan vacías).
-  if (!input.value.trim()) return false;
-  const respuestasValidas = input.dataset.answers.split("|").map(normalizar);
-  const respuestaAlumno = normalizar(input.value);
+  if (!valor.trim()) return false;
+  const respuestasValidas = (clave || "").split("|").map(normalizar);
+  const respuestaAlumno = normalizar(valor);
+  // Si la respuesta queda vacía al normalizar, solo vale el guion literal
+  // (respuestas "sin artículo" de File 2A), no un punto u otro signo suelto.
+  if (respuestaAlumno === "") return valor.trim() === "-" && respuestasValidas.includes("");
   if (respuestasValidas.includes(respuestaAlumno)) return true;
+  if (sinEspacios) {
+    const juntas = respuestaAlumno.replace(/ /g, "");
+    if (respuestasValidas.some((valida) => valida.replace(/ /g, "") === juntas)) return true;
+  }
+  if (exacta) return false;
   return respuestasValidas.some(
     (valida) =>
       valida.length >= LARGO_MINIMO_TOLERANCIA &&
@@ -214,6 +254,45 @@ function restaurarRespuestas(seccion) {
   });
 }
 
+// ---- Partes como actividades ----
+// Para la Nota 5, cada "Parte" de un ejercicio (cada subtítulo h4) cuenta
+// como una actividad. Un ejercicio sin subtítulos cuenta como una sola.
+// Esto es solo una forma de contar: los identificadores de ejercicio y de
+// cada espacio NO cambian, así que las respuestas ya guardadas se mantienen.
+function partesDeSeccion(seccion) {
+  const partes = [];
+  let actual = null;
+  Array.from(seccion.children).forEach((hijo) => {
+    if (hijo.tagName === "H4") {
+      actual = { nombre: textoLimpio(hijo), inputs: [] };
+      partes.push(actual);
+      return;
+    }
+    const inputs = Array.from(hijo.querySelectorAll("input[data-answers], input[data-freewrite]"));
+    if (hijo.matches && hijo.matches("input[data-answers], input[data-freewrite]")) inputs.unshift(hijo);
+    if (inputs.length === 0) return;
+    if (!actual) {
+      actual = { nombre: "", inputs: [] };
+      partes.push(actual);
+    }
+    actual.inputs.push(...inputs);
+  });
+  return partes.filter((parte) => parte.inputs.length > 0);
+}
+
+// valorDe(input) entrega lo que escribió el estudiante en ese espacio.
+function resumenPartes(seccion, valorDe) {
+  return partesDeSeccion(seccion).map((parte) => {
+    const auto = parte.inputs.filter((input) => input.hasAttribute("data-answers"));
+    const totalLibre = parte.inputs.length - auto.length;
+    const hecha = parte.inputs.every((input) => (valorDe(input) || "").trim().length > 0);
+    const correctasAuto = hecha
+      ? auto.filter((input) => esCorrectaValor(valorDe(input), input.getAttribute("data-answers"), ignoraEspacios(input), sinTolerancia(input))).length
+      : 0;
+    return { nombre: parte.nombre, hecha, totalAuto: auto.length, correctasAuto, totalLibre };
+  });
+}
+
 function guardarProgresoActividad(seccion) {
   const activityId = seccion.dataset.activityId;
   if (!activityId) return;
@@ -231,6 +310,7 @@ function guardarProgresoActividad(seccion) {
     totalAuto: auto.length,
     correctasAuto,
     totalLibre: libres.length,
+    partes: resumenPartes(seccion, (input) => input.value),
   });
 }
 
@@ -407,11 +487,79 @@ async function copiarResumen() {
   anunciar("estado-global", "Resumen copiado al portapapeles.");
 }
 
-function calcularYMostrarProgreso() {
+// Página de la unidad a la que pertenece un ejercicio: "file3c-ejercicio1"
+// está en "file-3c.html".
+function paginaDeActividad(activityId) {
+  const m = /^file(\d+[a-z])-/.exec(activityId);
+  return m ? `file-${m[1]}.html` : null;
+}
+
+// Los registros guardados antes de contar por partes no traen el detalle de
+// partes. Para esos, se lee la página de la unidad (sin abrirla) y se
+// corrigen las respuestas ya guardadas. Si no se puede leer, el ejercicio
+// cuenta como una sola actividad, como antes. Abrir la unidad una vez
+// también deja el detalle guardado.
+async function completarPartesFaltantes(actividades) {
+  const faltantes = actividades.filter((act) => !Array.isArray(act.partes));
+  const documentos = {};
+  for (const act of faltantes) {
+    const pagina = paginaDeActividad(act.id);
+    if (!pagina) continue;
+    if (!(pagina in documentos)) {
+      try {
+        const respuesta = await fetch(pagina, { cache: "no-cache" });
+        documentos[pagina] = respuesta.ok
+          ? new DOMParser().parseFromString(await respuesta.text(), "text/html")
+          : null;
+      } catch (err) {
+        documentos[pagina] = null;
+      }
+    }
+    const doc = documentos[pagina];
+    if (!doc) continue;
+    const seccion = Array.from(doc.querySelectorAll(".exercise[data-activity-id]")).find(
+      (sec) => sec.getAttribute("data-activity-id") === act.id
+    );
+    if (!seccion) continue;
+    const valores = leerDeStorage(RESPUESTAS_PREFIX + act.id, {});
+    act.partes = resumenPartes(seccion, (input) => valores[input.id] || "");
+    const registro = leerDeStorage(PROGRESO_PREFIX + act.id, null);
+    if (registro) {
+      registro.partes = act.partes;
+      guardarEnStorage(PROGRESO_PREFIX + act.id, registro);
+    }
+  }
+}
+
+// Convierte un registro de ejercicio en sus partes (actividades para la
+// nota), repartiendo las respuestas personales buenas que ingresó la
+// profesora en proporción a cuántos espacios personales tiene cada parte.
+function partesParaNota(act) {
+  const totalLibreEjercicio = act.totalLibre || 0;
+  const feedback = totalLibreEjercicio > 0 ? leerFeedbackLibre(act.id) : { correctasLibre: 0 };
+  const libresBuenas = Math.min(feedback.correctasLibre || 0, totalLibreEjercicio);
+
+  const partes = Array.isArray(act.partes) && act.partes.length > 0
+    ? act.partes
+    : [{ hecha: act.hecha, totalAuto: act.totalAuto || 0, correctasAuto: act.correctasAuto || 0, totalLibre: totalLibreEjercicio }];
+
+  return partes.map((parte) => {
+    const total = (parte.totalAuto || 0) + (parte.totalLibre || 0);
+    const libresParte = totalLibreEjercicio > 0
+      ? (libresBuenas * (parte.totalLibre || 0)) / totalLibreEjercicio
+      : 0;
+    const correctas = (parte.correctasAuto || 0) + libresParte;
+    const fraccion = parte.hecha && total > 0 ? Math.min(correctas / total, 1) : 0;
+    return { hecha: Boolean(parte.hecha), total, correctasAuto: parte.correctasAuto || 0, totalAuto: parte.totalAuto || 0, fraccion };
+  });
+}
+
+async function calcularYMostrarProgreso() {
   const tabla = document.getElementById("tabla-actividades");
   if (!tabla) return;
 
   const actividades = listarProgresoGlobal();
+  await completarPartesFaltantes(actividades);
   tabla.innerHTML = "";
 
   let hechas = 0;
@@ -420,16 +568,15 @@ function calcularYMostrarProgreso() {
   actividades.forEach((act) => {
     const totalAuto = act.totalAuto || 0;
     const totalLibre = act.totalLibre || 0;
-    const total = totalAuto + totalLibre;
     const feedback = totalLibre > 0 ? leerFeedbackLibre(act.id) : { correctasLibre: 0 };
     const correctasLibre = Math.min(feedback.correctasLibre || 0, totalLibre);
-    const correctas = (act.correctasAuto || 0) + correctasLibre;
-    const fraccion = act.hecha && total > 0 ? correctas / total : 0;
 
-    if (act.hecha) {
-      hechas += 1;
-      sumaBuenas += fraccion;
-    }
+    const partes = partesParaNota(act);
+    const partesHechas = partes.filter((parte) => parte.hecha);
+    hechas += partesHechas.length;
+    partesHechas.forEach((parte) => {
+      sumaBuenas += parte.fraccion;
+    });
 
     const fila = document.createElement("tr");
 
@@ -437,22 +584,32 @@ function calcularYMostrarProgreso() {
     celdaNombre.textContent = `${act.unidad || ""}, ${act.nombreActividad || act.id}`;
 
     const celdaEstado = document.createElement("td");
-    celdaEstado.textContent = act.hecha ? "Hecha" : "Pendiente";
+    const deTotal = `${partesHechas.length} de ${partes.length} ${partes.length === 1 ? "parte" : "partes"}`;
+    if (partesHechas.length === partes.length) {
+      celdaEstado.textContent = `Hecha, ${deTotal}`;
+    } else if (partesHechas.length === 0) {
+      celdaEstado.textContent = `Pendiente, ${deTotal}`;
+    } else {
+      celdaEstado.textContent = `En curso, ${deTotal}`;
+    }
+
+    // Correctas: se cuentan solo en las partes hechas.
+    const autoHechas = partesHechas.reduce((suma, parte) => suma + parte.totalAuto, 0);
+    const autoBuenas = partesHechas.reduce((suma, parte) => suma + parte.correctasAuto, 0);
 
     const celdaCorrectas = document.createElement("td");
-    if (!act.hecha) {
+    if (partesHechas.length === 0) {
       celdaCorrectas.textContent = "Sin datos";
     } else if (totalLibre === 0) {
-      celdaCorrectas.textContent = `${correctas}/${total}`;
+      celdaCorrectas.textContent = `${autoBuenas}/${autoHechas}`;
     } else {
-      // Fila con actividad de respuesta personal: se muestra lo
-      // auto-corregido (si hay) y un campo editable para que la
-      // profesora ingrese cuántas de las respuestas personales están
-      // buenas, de un total de totalLibre.
-      const partes = [];
-      if (totalAuto > 0) partes.push(`${act.correctasAuto || 0}/${totalAuto} auto`);
-      partes.push("personal:");
-      celdaCorrectas.append(document.createTextNode(partes.join(" ") + " "));
+      // Ejercicio con respuestas personales: se muestra lo auto-corregido
+      // (si hay) y un campo editable para que la profesora ingrese cuántas
+      // de las respuestas personales están buenas, de un total de totalLibre.
+      const textos = [];
+      if (autoHechas > 0) textos.push(`${autoBuenas}/${autoHechas} auto`);
+      textos.push("personal:");
+      celdaCorrectas.append(document.createTextNode(textos.join(" ") + " "));
 
       const inputFeedback = document.createElement("input");
       inputFeedback.type = "number";
@@ -753,7 +910,8 @@ function importarRespaldo(archivo) {
     const claves = Object.keys(datos);
     const confirmado = window.confirm(
       `Este archivo tiene ${claves.length} registros guardados el ${contenido.fecha || "(fecha desconocida)"}. ` +
-      "Esto va a reemplazar el progreso actual en este navegador. ¿Continuar?"
+      "Los ejercicios que vienen en el archivo reemplazan a esos mismos ejercicios en este navegador. " +
+      "Los ejercicios que no vienen en el archivo se mantienen como están. ¿Continuar?"
     );
     if (!confirmado) {
       anunciar("estado-global", "Restauración cancelada.");
