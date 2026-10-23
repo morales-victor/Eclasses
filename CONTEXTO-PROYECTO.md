@@ -170,33 +170,31 @@ más, y parece que una función nueva "no hace nada".
   el respaldo de Johao mostró 4 de 10 respuestas de 3C con el orden bien y
   solo los espacios corridos al tipear. Hoy: 1B Ej. 1, 3C Ej. 1, 4C Ej. 2.
   En el generador, `"ignorar_espacios": True` en el ejercicio.
-- Ejercicios donde se evalúa la **forma** de la palabra (terminación `ing`,
-  la `s` de he/she, `am/is/are`, `likes + ing`) llevan
-  `data-sin-tolerancia="true"`: ahí NO se acepta el error de una letra,
-  porque "makeing", "runing" o "love" (por "loves") son justo el error que
-  el ejercicio debe mostrar. En el generador, `"sin_tolerancia": True`. Hoy:
-  5B Ej. 2 y 3, 5C Ej. 2, 6B Ej. 1 y 2. En esos ejercicios, las negaciones
-  se aceptan también sin apóstrofo ("doesnt", "isnt") agregándolas como
-  respuesta válida, no con una regla global: en 1C "its" e "it's" son
-  respuestas distintas.
+- **Tolerancia a errores de tipeo y cuándo se quita.** La tolerancia
+  (una letra de diferencia en respuestas de 5 letras o más) se quita con
+  `data-sin-tolerancia="true"` cuando el error de una letra es justo el
+  error gramatical que el ejercicio enseña. Funciona en dos niveles:
+  - En el `<section>`, cuando todo el ejercicio evalúa la forma: 2A Ej. 2
+    (plurales), 3A Ej. 1 (presente simple), 3B Ej. 1, 5A Ej. 2 (con `I` el
+    verbo no lleva s), 5B Ej. 2 y 3, 5C Ej. 2, 6B Ej. 1 y 2.
+  - En un `<input>` puntual, cuando solo ese espacio tiene una forma
+    errónea a una letra: 1A ex3-7 (eight/eighty), 1B ex2-2 (America/
+    American), 1B ex3-8 y ex3-10 (eight/eighty), 1C ex1-7 (their/theirs),
+    3A ex3-1 (get up), 3C ex1-9 y ex1-10 (likes, lives tras does), 4B Ej. 2
+    ítems 1, 2, 6 y 9, 4C Ej. 2 ítems 1, 2 y 9, 5C ítems 8 y 9 (cloud,
+    wind). En el generador: `I(..., exacta=True)`.
+  - Se mantiene la tolerancia en vocabulario (números, días, colores,
+    adjetivos, trabajos, frecuencia, saludos), porque ahí un error de
+    tipeo no dice nada del inglés y a Johao le cuesta tipear.
+  - Método de auditoría (23-10-2026): a cada respuesta se le aplicaron
+    variantes de inflexión (s, es, y/ies, ing, eight/eighty, etc.) y se
+    revisó a mano cuáles eran errores reales de estudiante. Al aplicar el
+    cambio, ninguna de las 49 respuestas guardadas de Johao cambió de
+    resultado.
+  - En los espacios sin tolerancia, las negaciones se aceptan también sin
+    apóstrofo ("doesnt", "isnt") agregándolas como respuesta válida, no con
+    una regla global: en 1C "its" e "it's" son respuestas distintas.
 - El apóstrofo curvo (’) se normaliza a recto (') en `normalizar()`.
-- Pendiente de decidir con el profesor: 3A Ej. 1 (la `s` de tercera
-  persona) tiene la misma debilidad ("play" pasa por "plays"), pero Johao
-  ya lo respondió; no se cambió para no alterar su corrección sin acuerdo.
-- La restauración de respaldo **combina**: reemplaza solo las claves que
-  vienen en el archivo y deja las demás. Sirve para juntar avance hecho en
-  dos equipos distintos.
-- Cada `<input>` de respuesta cerrada lleva `data-answers="opcion1|opcion2"`
-  (varias opciones separadas por `|`).
-- Actividades de **respuesta personal / escritura libre** (sin una
-  respuesta única correcta) usan `data-freewrite="true"` en vez de
-  `data-answers`. Cuentan como "hecha" al completarse, pero su corrección
-  queda pendiente de revisión manual de la docente en `progreso.html`
-  (hay un campo numérico ahí para ingresar cuántas están buenas).
-- `contextoDeInput()`: arma la oración completa de contexto (con el campo
-  marcado como "___") para los anuncios de "Verificar" y "Ir al siguiente
-  error" — así el estudiante sabe a qué pregunta corresponde el error sin
-  tener que releer manualmente.
 
 ## Sistema de nota (Nota 5 / Ebook)
 
