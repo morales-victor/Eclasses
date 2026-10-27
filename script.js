@@ -656,12 +656,12 @@ async function calcularYMostrarProgreso() {
       `Actividades hechas: ${hechas} de ${META_ACTIVIDADES}`,
       `Nota de completitud: ${nc.toFixed(1)}`,
       `Nota de corrección: ${ncorr.toFixed(1)}`,
-      `Nota 5 (Ebook) estimada: ${notaFinal.toFixed(1)}`,
+      `Nota del Ebook estimada (escala de 1.0 a 7.0): ${notaFinal.toFixed(1)}`,
     ].join("\n");
     resultado.hidden = false;
   }
 
-  anunciar("estado-global", `Nota 5 estimada: ${notaFinal.toFixed(1)}. Actividades hechas: ${hechas} de ${META_ACTIVIDADES}.`);
+  anunciar("estado-global", `Nota del Ebook estimada: ${notaFinal.toFixed(1)}, en escala de 1 a 7. Actividades hechas: ${hechas} de ${META_ACTIVIDADES}.`);
 }
 
 async function copiarNota() {

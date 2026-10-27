@@ -198,6 +198,13 @@ más, y parece que una función nueva "no hace nada".
 
 ## Sistema de nota (Nota 5 / Ebook)
 
+- **"Nota 5" es el nombre de la nota en el curso (el Ebook), NO un valor de
+  5.0.** La nota estimada va de 1.0 a 7.0. La profesora lo leyó como 5.0 y
+  se aclaró (27-10-2026): la página de progreso ahora dice "Nota del Ebook
+  estimada (escala de 1.0 a 7.0)" y explica cómo se calcula y qué debe
+  ingresar ella en las respuestas personales. No volver a usar "Nota 5"
+  como si fuera el valor en ningún texto que lea el estudiante o la docente.
+
 - Meta fija: **65 actividades** completadas (mismo número absoluto exigido
   a cualquier estudiante del curso, no un porcentaje relativo a cuántas
   actividades tenga esta plataforma).
