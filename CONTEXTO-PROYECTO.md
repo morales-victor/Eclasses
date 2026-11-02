@@ -309,3 +309,10 @@ Las páginas `file-XX.html` desde File 4B se generan con un script Python
 nuevo: agregar su contenido en `contenido.py` y correr
 `python3 build.py <carpeta_del_sitio>`. El contenido de File 1A a 3C no está
 en el `contenido.py` actual: esas páginas se editan directamente.
+
+
+## Ajustes del 2 de noviembre (revisión del respaldo del 30 de octubre)
+- 1A Ejercicio 1 ahora es estricto (`data-sin-tolerancia`): "I is" se aceptaba como "it is".
+- 1A Ejercicio 2, espacio 13 ("Good ___") acepta "bye" y "night".
+- 2A Ejercicio 1: la nota Recuerda dice que se escribe un guion o la palabra none, sin dejar vacío ni repetir la cosa.
+- Pendiente: revisar fugas de tolerancia por letras faltantes en el resto de las unidades.
