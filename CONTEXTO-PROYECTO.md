@@ -316,3 +316,6 @@ en el `contenido.py` actual: esas páginas se editan directamente.
 - 1A Ejercicio 2, espacio 13 ("Good ___") acepta "bye" y "night".
 - 2A Ejercicio 1: la nota Recuerda dice que se escribe un guion o la palabra none, sin dejar vacío ni repetir la cosa.
 - Pendiente: revisar fugas de tolerancia por letras faltantes en el resto de las unidades.
+
+## Ajuste del 24 de noviembre
+- La nota de corrección ahora tiene tope de 7.0 (con más de 65 actividades hechas la suma de "buenas" pasaba la meta y daba 7.1). Cache busting subió a `?v=10`.

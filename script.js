@@ -28,7 +28,7 @@ function notaCompletitud(actividadesHechas) {
 function notaCorreccion(actividadesBuenas) {
   const porcentaje = (actividadesBuenas / META_ACTIVIDADES) * 100;
   const nota = porcentaje < 60 ? 1 + (porcentaje / 60) * 3 : 4 + ((porcentaje - 60) / 40) * 3;
-  return Math.round(nota * 10) / 10;
+  return Math.round(Math.min(nota, 7) * 10) / 10;
 }
 
 function notaFinalEbook(actividadesHechas, actividadesBuenas) {
